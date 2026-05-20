@@ -16,9 +16,11 @@ app_license = "MIT"
 required_apps = ["frappe", "erpnext"]
 
 # ── Fixtures ───────────────────────────────────────────────────────────
-# Records exported into JSON files under `elite_global/fixtures/` and
-# re-imported on `bench migrate` / `bench install-app`. Used here for
-# Custom Fields and master data the demo depends on.
+# Only schema-level fixtures here — Custom Fields, Workspace, Number
+# Cards, Dashboard Charts. All master/seed data (UOMs, Item / Customer /
+# Supplier Groups, Items, Suppliers, Customers, Warehouses) is created
+# imperatively in `setup/install.py` so that ordering & company / type
+# dependencies can be enforced explicitly.
 fixtures = [
     {
         "dt": "Custom Field",
@@ -28,14 +30,6 @@ fixtures = [
         "dt": "Custom Field",
         "filters": [["name", "like", "%-custom_bid_%"]],
     },
-    {"dt": "UOM", "filters": [["name", "in", ["Tin", "Jar", "Pouch"]]]},
-    {"dt": "Warehouse", "filters": [["warehouse_name", "like", "Elite%"]]},
-    {"dt": "Supplier Group", "filters": [["name", "like", "Refined Oil%"]]},
-    {"dt": "Customer Group", "filters": [["name", "like", "Refined Oil%"]]},
-    {"dt": "Item Group", "filters": [["name", "like", "Refined%"]]},
-    {"dt": "Item", "filters": [["item_code", "like", "EG-%"]]},
-    {"dt": "Supplier", "filters": [["supplier_name", "like", "%(EG)"]]},
-    {"dt": "Customer", "filters": [["customer_name", "like", "%(EG)"]]},
     "Workspace",
     "Number Card",
     "Dashboard Chart",
