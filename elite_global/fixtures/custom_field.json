@@ -1,0 +1,138 @@
+[
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Receipt-custom_variance_section",
+  "dt": "Purchase Receipt",
+  "fieldname": "custom_variance_section",
+  "label": "Variance assessment",
+  "fieldtype": "Section Break",
+  "insert_after": "supplier_warehouse",
+  "collapsible": 0,
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Receipt-custom_variance_flagged",
+  "dt": "Purchase Receipt",
+  "fieldname": "custom_variance_flagged",
+  "label": "Variance flagged",
+  "fieldtype": "Check",
+  "insert_after": "custom_variance_section",
+  "default": "0",
+  "description": "Auto-set on save when any line shows quantity, rate or unit drift versus the linked Purchase Order.",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Receipt-custom_variance_kind",
+  "dt": "Purchase Receipt",
+  "fieldname": "custom_variance_kind",
+  "label": "Variance kind",
+  "fieldtype": "Select",
+  "options": "\nNone\nQuantity\nRate\nUnit\nMultiple",
+  "insert_after": "custom_variance_flagged",
+  "default": "None",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Receipt-custom_variance_column",
+  "dt": "Purchase Receipt",
+  "fieldname": "custom_variance_column",
+  "fieldtype": "Column Break",
+  "insert_after": "custom_variance_kind",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Receipt-custom_variance_note",
+  "dt": "Purchase Receipt",
+  "fieldname": "custom_variance_note",
+  "label": "Variance note",
+  "fieldtype": "Small Text",
+  "insert_after": "custom_variance_column",
+  "description": "Free text — recorded by godown incharge / accounts when a variance is accepted, disputed or escalated.",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Receipt Item-custom_variance_kind",
+  "dt": "Purchase Receipt Item",
+  "fieldname": "custom_variance_kind",
+  "label": "Variance",
+  "fieldtype": "Select",
+  "options": "\nNone\nQuantity\nRate\nUnit",
+  "insert_after": "qty",
+  "default": "None",
+  "in_list_view": 1,
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Purchase Receipt Item-custom_variance_pct",
+  "dt": "Purchase Receipt Item",
+  "fieldname": "custom_variance_pct",
+  "label": "Variance %",
+  "fieldtype": "Percent",
+  "insert_after": "custom_variance_kind",
+  "read_only": 1,
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Supplier Quotation-custom_bid_section",
+  "dt": "Supplier Quotation",
+  "fieldname": "custom_bid_section",
+  "label": "Bid Manager",
+  "fieldtype": "Section Break",
+  "insert_after": "transaction_date",
+  "collapsible": 0,
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Supplier Quotation-custom_bid_best_on_price",
+  "dt": "Supplier Quotation",
+  "fieldname": "custom_bid_best_on_price",
+  "label": "Best on price",
+  "fieldtype": "Check",
+  "insert_after": "custom_bid_section",
+  "default": "0",
+  "description": "Mark when this quote is the lowest total against the RFQ.",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Supplier Quotation-custom_bid_best_on_terms",
+  "dt": "Supplier Quotation",
+  "fieldname": "custom_bid_best_on_terms",
+  "label": "Best on terms",
+  "fieldtype": "Check",
+  "insert_after": "custom_bid_best_on_price",
+  "default": "0",
+  "description": "Mark when payment + freight terms beat the alternatives even if price is not lowest.",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Supplier Quotation-custom_bid_freight_terms",
+  "dt": "Supplier Quotation",
+  "fieldname": "custom_bid_freight_terms",
+  "label": "Freight terms",
+  "fieldtype": "Data",
+  "insert_after": "custom_bid_best_on_terms",
+  "description": "e.g. FOR destination, Ex-plant + ₹38/tin, Rake dispatch — ETA 60h.",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Supplier Quotation-custom_bid_scheme",
+  "dt": "Supplier Quotation",
+  "fieldname": "custom_bid_scheme",
+  "label": "Scheme / plant discount",
+  "fieldtype": "Small Text",
+  "insert_after": "custom_bid_freight_terms",
+  "description": "Scheme or plant discount offered with this quote.",
+  "module": "Elite Global"
+ }
+]

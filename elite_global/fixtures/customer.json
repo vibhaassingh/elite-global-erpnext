@@ -1,0 +1,57 @@
+[
+ {
+  "doctype": "Customer",
+  "name": "Sharma Trading Co. (EG)",
+  "customer_name": "Sharma Trading Co. (EG)",
+  "customer_type": "Company",
+  "customer_group": "Refined Oil Distributor",
+  "territory": "All Territories",
+  "country": "India",
+  "default_currency": "INR",
+  "customer_details": "Distributor — Karnal. Reliable payer. Credit position healthy."
+ },
+ {
+  "doctype": "Customer",
+  "name": "Verma Kirana Stores (EG)",
+  "customer_name": "Verma Kirana Stores (EG)",
+  "customer_type": "Company",
+  "customer_group": "Refined Oil Retailer",
+  "territory": "All Territories",
+  "country": "India",
+  "default_currency": "INR",
+  "customer_details": "Retailer — Sonipat. Small ticket, frequent off-take."
+ },
+ {
+  "doctype": "Customer",
+  "name": "Bansal Wholesale (EG)",
+  "customer_name": "Bansal Wholesale (EG)",
+  "customer_type": "Company",
+  "customer_group": "Refined Oil Distributor",
+  "territory": "All Territories",
+  "country": "India",
+  "default_currency": "INR",
+  "customer_details": "Distributor — Panipat. Currently overdue on multiple invoices. Credit on hold."
+ },
+ {
+  "doctype": "Customer",
+  "name": "Reliance Smart - Karnal (EG)",
+  "customer_name": "Reliance Smart - Karnal (EG)",
+  "customer_type": "Company",
+  "customer_group": "Refined Oil Distributor",
+  "territory": "All Territories",
+  "country": "India",
+  "default_currency": "INR",
+  "customer_details": "Modern trade — Karnal store. Long PDC cycle but reliable."
+ },
+ {
+  "doctype": "Customer",
+  "name": "Hotel Saffron Kitchens (EG)",
+  "customer_name": "Hotel Saffron Kitchens (EG)",
+  "customer_type": "Company",
+  "customer_group": "Refined Oil Institutional",
+  "territory": "All Territories",
+  "country": "India",
+  "default_currency": "INR",
+  "customer_details": "Institutional buyer — Delhi. Bulk tins on monthly contract."
+ }
+]

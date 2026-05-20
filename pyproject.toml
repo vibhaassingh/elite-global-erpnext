@@ -1,0 +1,20 @@
+[project]
+name = "elite_global"
+version = "0.1.0"
+description = "Elite Global Enterprises — Refined Oil Distribution & C&F — ERPNext customisations and demo seed."
+authors = [
+    { name = "Kerning AI", email = "hello@kerning.ooo" },
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Frappe / ERPNext are provided by the bench environment, not pinned here.
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "elite_global"

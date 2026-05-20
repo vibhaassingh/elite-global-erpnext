@@ -1,0 +1,35 @@
+[
+ {
+  "doctype": "Supplier",
+  "name": "Adani Wilmar Ltd. (EG)",
+  "supplier_name": "Adani Wilmar Ltd. (EG)",
+  "supplier_group": "Refined Oil Principal",
+  "supplier_type": "Company",
+  "country": "India",
+  "default_currency": "INR",
+  "payment_terms": "Net 21",
+  "supplier_details": "Principal — Mundra plant. Brands: Fortune. Scheme-driven dispatches; competitive on terms."
+ },
+ {
+  "doctype": "Supplier",
+  "name": "Marico Ltd. (EG)",
+  "supplier_name": "Marico Ltd. (EG)",
+  "supplier_group": "Refined Oil Principal",
+  "supplier_type": "Company",
+  "country": "India",
+  "default_currency": "INR",
+  "payment_terms": "Net 14",
+  "supplier_details": "Principal — Jaipur depot. Brands: Saffola. Best plant discount on quick lifting."
+ },
+ {
+  "doctype": "Supplier",
+  "name": "Bunge India Pvt. Ltd. (EG)",
+  "supplier_name": "Bunge India Pvt. Ltd. (EG)",
+  "supplier_group": "Refined Oil Principal",
+  "supplier_type": "Company",
+  "country": "India",
+  "default_currency": "INR",
+  "payment_terms": "Net 30",
+  "supplier_details": "Principal — Haldia plant. Brands: Dalda. Rake dispatches, longest credit window."
+ }
+]

@@ -1,0 +1,15 @@
+[
+ {
+  "doctype": "Dashboard Chart",
+  "name": "Refined Oil — Stock by Warehouse",
+  "chart_name": "Refined Oil — Stock by Warehouse",
+  "chart_type": "Report",
+  "report_name": "Stock Balance",
+  "is_public": 1,
+  "type": "Bar",
+  "timespan": "Last Month",
+  "time_interval": "Daily",
+  "based_on": "warehouse",
+  "module": "Elite Global"
+ }
+]

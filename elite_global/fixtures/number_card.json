@@ -1,0 +1,46 @@
+[
+ {
+  "doctype": "Number Card",
+  "name": "EG · Open Bids",
+  "label": "Open Bids",
+  "document_type": "Supplier Quotation",
+  "function": "Count",
+  "is_public": 1,
+  "color": "#f1ad3d",
+  "filters_json": "[[\"Supplier Quotation\",\"status\",\"=\",\"Submitted\",false]]",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Number Card",
+  "name": "EG · Open Sales Orders",
+  "label": "Open Sales Orders",
+  "document_type": "Sales Order",
+  "function": "Count",
+  "is_public": 1,
+  "color": "#f1ad3d",
+  "filters_json": "[[\"Sales Order\",\"status\",\"in\",[\"Draft\",\"To Deliver and Bill\",\"On Hold\"],false]]",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Number Card",
+  "name": "EG · POs Awaiting Receipt",
+  "label": "POs Awaiting Receipt",
+  "document_type": "Purchase Order",
+  "function": "Count",
+  "is_public": 1,
+  "color": "#f1ad3d",
+  "filters_json": "[[\"Purchase Order\",\"status\",\"in\",[\"To Receive and Bill\",\"To Receive\"],false]]",
+  "module": "Elite Global"
+ },
+ {
+  "doctype": "Number Card",
+  "name": "EG · Variance Flagged Receipts",
+  "label": "Variance Flagged Receipts",
+  "document_type": "Purchase Receipt",
+  "function": "Count",
+  "is_public": 1,
+  "color": "#e57373",
+  "filters_json": "[[\"Purchase Receipt\",\"custom_variance_flagged\",\"=\",1,false]]",
+  "module": "Elite Global"
+ }
+]
