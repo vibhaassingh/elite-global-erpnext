@@ -32,7 +32,6 @@ fixtures = [
     },
     "Workspace",
     "Number Card",
-    "Dashboard Chart",
 ]
 
 # ── After-install hook ────────────────────────────────────────────────
