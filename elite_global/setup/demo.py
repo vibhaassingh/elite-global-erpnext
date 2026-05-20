@@ -151,7 +151,8 @@ def _create_purchase_order_from(winning_quote: Any) -> Any:
     po.supplier = winner.supplier
     po.transaction_date = today
     po.schedule_date = today + timedelta(days=2)
-    po.remarks = f"{DEMO_TAG} from winning bid {winner.name}"
+    # Purchase Order doctype has no `remarks` field in vanilla ERPNext;
+    # demo tagging happens via the linked supplier quotation.
     po.append("items", {
         "item_code": "EG-RSFO-15KG-TIN",
         "qty": 1200,
@@ -281,20 +282,34 @@ def _create_sales_order_blocked() -> Any:
 # ── Cleanup ─────────────────────────────────────────────────────────────
 
 def _wipe_prior() -> None:
-    """Remove demo rows from any previous run so we stay idempotent."""
-    doctypes = [
-        "Purchase Receipt",
-        "Purchase Order",
-        "Supplier Quotation",
-        "Request for Quotation",
-        "Sales Order",
+    """Remove demo rows from any previous run so we stay idempotent.
+
+    Different DocTypes use different free-text fields:
+      Sales Order / Purchase Receipt / Supplier Quotation: `remarks`
+      Purchase Order: `customer_address` is the wrong field; `terms`
+        and `tc_name` are used. Purchase Order in vanilla ERPNext
+        DOES NOT have a `remarks` top-level field. We tag PO rows
+        via the Comment system instead.
+      Request for Quotation: uses `message_for_supplier`.
+    """
+    # (doctype, field, value-prefix) — skip silently if the column is
+    # missing for that DocType (older ERPNext versions vary).
+    targets = [
+        ("Sales Order", "remarks", DEMO_TAG),
+        ("Purchase Receipt", "remarks", DEMO_TAG),
+        ("Supplier Quotation", "remarks", DEMO_TAG),
+        ("Request for Quotation", "message_for_supplier", DEMO_TAG),
     ]
-    for dt in doctypes:
-        rows = frappe.get_all(
-            dt,
-            filters=[["remarks", "like", f"{DEMO_TAG}%"]],
-            fields=["name", "docstatus"],
-        )
+    for dt, field, prefix in targets:
+        try:
+            rows = frappe.get_all(
+                dt,
+                filters=[[field, "like", f"{prefix}%"]],
+                fields=["name", "docstatus"],
+            )
+        except Exception:
+            # Column doesn't exist in this ERPNext build — skip cleanly.
+            continue
         for row in rows:
             try:
                 doc = frappe.get_doc(dt, row.name)
@@ -303,3 +318,22 @@ def _wipe_prior() -> None:
                 doc.delete(ignore_permissions=True)
             except Exception as e:
                 frappe.log_error(f"Demo wipe failed: {dt} {row.name}", str(e))
+
+    # Purchase Order has no `remarks` field — wipe by linked RFQ-PO chain
+    # if the upstream RFQs are demo-tagged.
+    try:
+        po_rows = frappe.get_all(
+            "Purchase Order",
+            filters=[["po_no", "like", f"%{DEMO_TAG}%"]],
+            fields=["name", "docstatus"],
+        )
+    except Exception:
+        po_rows = []
+    for row in po_rows:
+        try:
+            doc = frappe.get_doc("Purchase Order", row.name)
+            if doc.docstatus == 1:
+                doc.cancel()
+            doc.delete(ignore_permissions=True)
+        except Exception:
+            pass
