@@ -119,7 +119,8 @@ def _create_supplier_quotations(rfq: Any) -> list[Any]:
         sq.supplier = spec["supplier"]
         sq.transaction_date = today
         sq.valid_till = today + timedelta(days=2)
-        sq.remarks = f"{DEMO_TAG} bid against {rfq.name}"
+        # Supplier Quotation has no 'remarks' top-level field; demo
+        # identification happens via supplier name.
         sq.custom_bid_best_on_price = spec["best_on_price"]
         sq.custom_bid_best_on_terms = spec["best_on_terms"]
         sq.custom_bid_freight_terms = spec["freight_terms"]
@@ -146,10 +147,19 @@ def _create_supplier_quotations(rfq: Any) -> list[Any]:
 def _create_purchase_order_from(winning_quote: Any) -> Any:
     """PO follows the cheapest bid (Marico in the demo)."""
     # Pick the actual cheapest one by walking the just-inserted quotes.
+    # Supplier Quotation has no 'remarks' column in this ERPNext build,
+    # so we identify our demo quotes by our three demo suppliers.
+    demo_suppliers = [
+        "Adani Wilmar Ltd. (EG)",
+        "Marico Ltd. (EG)",
+        "Bunge India Pvt. Ltd. (EG)",
+    ]
     quotes = frappe.get_all(
         "Supplier Quotation",
-        filters={"remarks": ["like", f"{DEMO_TAG}%"], "docstatus": 1},
+        filters={"supplier": ["in", demo_suppliers], "docstatus": 1},
         fields=["name", "supplier", "grand_total"],
+        order_by="creation desc",
+        limit_page_length=3,
     )
     winner = sorted(quotes, key=lambda q: q.grand_total)[0]
 
@@ -323,7 +333,6 @@ def _wipe_prior() -> None:
     targets = [
         ("Sales Order", "remarks", DEMO_TAG),
         ("Purchase Receipt", "remarks", DEMO_TAG),
-        ("Supplier Quotation", "remarks", DEMO_TAG),
         ("Request for Quotation", "message_for_supplier", DEMO_TAG),
     ]
     for dt, field, prefix in targets:
@@ -345,21 +354,27 @@ def _wipe_prior() -> None:
             except Exception as e:
                 frappe.log_error(f"Demo wipe failed: {dt} {row.name}", str(e))
 
-    # Purchase Order has no `remarks` field — wipe by linked RFQ-PO chain
-    # if the upstream RFQs are demo-tagged.
-    try:
-        po_rows = frappe.get_all(
-            "Purchase Order",
-            filters=[["po_no", "like", f"%{DEMO_TAG}%"]],
-            fields=["name", "docstatus"],
-        )
-    except Exception:
-        po_rows = []
-    for row in po_rows:
+    # Purchase Order + Supplier Quotation have no `remarks` field —
+    # wipe by demo supplier set.
+    demo_suppliers = [
+        "Adani Wilmar Ltd. (EG)",
+        "Marico Ltd. (EG)",
+        "Bunge India Pvt. Ltd. (EG)",
+    ]
+    for dt in ("Purchase Order", "Supplier Quotation"):
         try:
-            doc = frappe.get_doc("Purchase Order", row.name)
-            if doc.docstatus == 1:
-                doc.cancel()
-            doc.delete(ignore_permissions=True)
+            rows = frappe.get_all(
+                dt,
+                filters={"supplier": ["in", demo_suppliers]},
+                fields=["name", "docstatus"],
+            )
         except Exception:
-            pass
+            continue
+        for row in rows:
+            try:
+                doc = frappe.get_doc(dt, row.name)
+                if doc.docstatus == 1:
+                    doc.cancel()
+                doc.delete(ignore_permissions=True)
+            except Exception:
+                pass
