@@ -28,24 +28,20 @@ def after_install() -> None:
     """
     Entry point invoked by Frappe after `install-app elite_global`.
 
-    Ordering matters here. Notably, Company.on_update fires when we
-    insert the Company and ERPNext cascades into creating the default
-    "<Company> - Stores in Transit" warehouse — which sets
-    warehouse_type='Transit'. On a freshly-provisioned site the
-    Warehouse Type 'Transit' record doesn't exist yet, so we have to
-    create that BEFORE inserting the Company.
+    Ordering matters here. On a freshly-provisioned Frappe Cloud site
+    several ERPNext setup-wizard records don't exist yet:
 
-    The full sequence:
-      Warehouse Type 'Transit' -> Company (triggers default Warehouses)
-      -> UOMs -> Groups -> Items -> Suppliers -> Customers
-      -> Our named Warehouses -> Credit limits -> Demo seed
+      * Warehouse Type 'Transit' — needed because Company.on_update
+        cascades into creating "<Company> - Stores in Transit"
+        whose `warehouse_type` defaults to 'Transit'.
+      * Root tree nodes 'All Supplier Groups', 'All Customer Groups',
+        'All Item Groups', 'All Territories' — required as parents
+        for our child group records.
 
-    Demo seed failures don't break the install — we log and continue
-    so the site stays usable even if a sample doc trips a validation
-    we haven't caught yet. `install_demo()` is idempotent and can be
-    re-run from the bench console after any code change.
+    We create those first, then the Company, then everything else.
     """
     _ensure_warehouse_types()
+    _ensure_root_groups()
     _ensure_company()
     _ensure_uoms()
     _ensure_supplier_groups()
@@ -69,6 +65,32 @@ def after_install() -> None:
             title="elite_global · demo seed failed during install",
             message=frappe.get_traceback(),
         )
+
+
+# ── Root tree nodes (must exist before any child group / territory) ───
+
+def _ensure_root_groups() -> None:
+    """
+    ERPNext's setup wizard normally creates the root nodes for Supplier
+    Group, Customer Group, Item Group and Territory ("All <X>"). On a
+    freshly-provisioned site these are missing — so referencing them as
+    parents in our child group inserts fails with LinkValidationError.
+
+    We create them as root tree nodes (is_group=1, no parent) so our
+    child records can hang off them.
+    """
+    roots = [
+        ("Supplier Group", "All Supplier Groups", "supplier_group_name"),
+        ("Customer Group", "All Customer Groups", "customer_group_name"),
+        ("Item Group", "All Item Groups", "item_group_name"),
+        ("Territory", "All Territories", "territory_name"),
+    ]
+    for doctype, root_name, name_field in roots:
+        if frappe.db.exists(doctype, root_name):
+            continue
+        doc = frappe.new_doc(doctype)
+        doc.update({name_field: root_name, "is_group": 1})
+        doc.insert(ignore_permissions=True)
 
 
 # ── Warehouse Types (must exist before Company is created) ────────────
