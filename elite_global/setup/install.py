@@ -42,6 +42,7 @@ def after_install() -> None:
     """
     _ensure_warehouse_types()
     _ensure_root_groups()
+    _ensure_price_lists()
     _ensure_company()
     _ensure_uoms()
     _ensure_supplier_groups()
@@ -90,6 +91,27 @@ def _ensure_root_groups() -> None:
             continue
         doc = frappe.new_doc(doctype)
         doc.update({name_field: root_name, "is_group": 1})
+        doc.insert(ignore_permissions=True)
+
+
+# ── Price Lists (Sales Order requires Standard Selling) ───────────────
+
+def _ensure_price_lists() -> None:
+    """Sales Order requires `selling_price_list`. The standard 'Standard
+    Selling' / 'Standard Buying' price lists ship with ERPNext's setup
+    wizard — but on a freshly-provisioned site they're absent."""
+    for name, buying, selling in [
+        ("Standard Selling", 0, 1),
+        ("Standard Buying", 1, 0),
+    ]:
+        if frappe.db.exists("Price List", name):
+            continue
+        doc = frappe.new_doc("Price List")
+        doc.price_list_name = name
+        doc.currency = "INR"
+        doc.buying = buying
+        doc.selling = selling
+        doc.enabled = 1
         doc.insert(ignore_permissions=True)
 
 

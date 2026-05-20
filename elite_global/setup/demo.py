@@ -294,6 +294,11 @@ def _create_sales_order_clean() -> Any:
     """Sharma Trading — within credit limit, releases for dispatch."""
     so = frappe.new_doc("Sales Order")
     so.company = COMPANY
+    so.selling_price_list = "Standard Selling"
+    so.price_list_currency = "INR"
+    so.plc_conversion_rate = 1
+    so.currency = "INR"
+    so.conversion_rate = 1
     so.customer = "Sharma Trading Co. (EG)"
     so.transaction_date = today
     so.delivery_date = today + timedelta(days=2)
@@ -317,6 +322,11 @@ def _create_sales_order_blocked() -> Any:
     """Bansal Wholesale — overdue + near limit; ERPNext blocks on submit."""
     so = frappe.new_doc("Sales Order")
     so.company = COMPANY
+    so.selling_price_list = "Standard Selling"
+    so.price_list_currency = "INR"
+    so.plc_conversion_rate = 1
+    so.currency = "INR"
+    so.conversion_rate = 1
     so.customer = "Bansal Wholesale (EG)"
     so.transaction_date = today
     so.delivery_date = today + timedelta(days=2)
