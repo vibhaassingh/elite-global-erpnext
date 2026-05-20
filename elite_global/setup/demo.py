@@ -28,8 +28,8 @@ import frappe
 
 DEMO_TAG = "[demo · elite_global]"
 COMPANY = "Elite Global Enterprises"
-WAREHOUSE = "Elite - Panipat Godown"
-TRANSIT = "Elite - Stock in Transit"
+WAREHOUSE = "Elite - Panipat Godown - EGE"
+TRANSIT = "Elite - Stock in Transit - EGE"
 
 today = datetime.today().date()
 yday = today - timedelta(days=1)

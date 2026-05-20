@@ -25,7 +25,25 @@ COMPANY_COUNTRY = "India"
 
 
 def after_install() -> None:
-    """Entry point invoked by Frappe after `install-app elite_global`."""
+    """
+    Entry point invoked by Frappe after `install-app elite_global`.
+
+    The master data (Company, UOMs, groups, items, suppliers, customers,
+    warehouses, credit limits) is set up imperatively here so the
+    ordering is explicit.
+
+    The transactional demo data — RFQ + Supplier Quotations + PO + PR
+    with variance + Sales Orders — is also loaded as part of install
+    via `elite_global.setup.demo.install_demo()`. That helper is
+    idempotent: re-running it deletes any prior demo rows before
+    re-inserting, so it remains safe to call from
+    `bench --site <site> execute elite_global.setup.demo.install_demo`
+    after each code change.
+
+    Demo data load failures don't break the install — we log and
+    continue so the site stays usable even if a sample doc trips a
+    validation we haven't caught yet.
+    """
     _ensure_company()
     _ensure_uoms()
     _ensure_supplier_groups()
@@ -37,6 +55,18 @@ def after_install() -> None:
     _ensure_warehouses()
     _ensure_credit_limits()
     frappe.db.commit()
+
+    # Seed transactional demo. Wrapped so install still succeeds if a
+    # sample doc fails — the demo helper is rerunnable from the bench.
+    try:
+        from elite_global.setup.demo import install_demo
+        install_demo()
+        frappe.db.commit()
+    except Exception:  # noqa: BLE001 — log and continue
+        frappe.log_error(
+            title="elite_global · demo seed failed during install",
+            message=frappe.get_traceback(),
+        )
 
 
 # ── Company ─────────────────────────────────────────────────────────────
