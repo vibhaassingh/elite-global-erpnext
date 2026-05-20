@@ -246,7 +246,18 @@ WAREHOUSES = [
 
 
 def _ensure_warehouses() -> None:
-    transit_exists = frappe.db.exists("Warehouse Type", "Transit")
+    # ERPNext's `Warehouse` doctype has `warehouse_type` defaulting to
+    # "Transit". On a freshly-provisioned site the "Transit" Warehouse
+    # Type record doesn't exist yet (it's normally created when the
+    # Setup Wizard runs), so every Warehouse insert trips a
+    # `LinkValidationError: Could not find Warehouse Type: Transit`
+    # — even when we don't set the field. We create it ourselves
+    # before any warehouse insert.
+    if not frappe.db.exists("Warehouse Type", "Transit"):
+        wt = frappe.new_doc("Warehouse Type")
+        wt.name = "Transit"
+        wt.insert(ignore_permissions=True)
+
     for wname, wtype in WAREHOUSES:
         if frappe.db.exists("Warehouse", f"{wname} - {COMPANY_ABBR}"):
             continue
@@ -260,8 +271,7 @@ def _ensure_warehouses() -> None:
                 "company": COMPANY_NAME,
             }
         )
-        # Only set warehouse_type if the linked Warehouse Type record exists.
-        if wtype and transit_exists:
+        if wtype:
             doc.warehouse_type = wtype
         doc.insert(ignore_permissions=True)
 
