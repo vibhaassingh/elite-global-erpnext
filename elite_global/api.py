@@ -15,6 +15,29 @@ import frappe
 
 
 @frappe.whitelist(allow_guest=True)
+def run_demo_seed() -> dict:
+    """
+    Run the transactional demo seeder explicitly. Hit at:
+        /api/method/elite_global.api.run_demo_seed
+
+    Returns either {"ok": true, "ran": "install_demo"} on success, or
+    {"ok": false, "error": "<exception>", "traceback": "..."} on
+    failure. Useful when after_install swallowed the demo seed call.
+    """
+    try:
+        from elite_global.setup.demo import install_demo
+        install_demo()
+        frappe.db.commit()
+        return {"ok": True, "ran": "install_demo"}
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": frappe.get_traceback(),
+        }
+
+
+@frappe.whitelist(allow_guest=True)
 def demo_status() -> dict:
     """Return counts of the demo records the after_install hook should
     have created. Hit at:
