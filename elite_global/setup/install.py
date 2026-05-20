@@ -28,22 +28,24 @@ def after_install() -> None:
     """
     Entry point invoked by Frappe after `install-app elite_global`.
 
-    The master data (Company, UOMs, groups, items, suppliers, customers,
-    warehouses, credit limits) is set up imperatively here so the
-    ordering is explicit.
+    Ordering matters here. Notably, Company.on_update fires when we
+    insert the Company and ERPNext cascades into creating the default
+    "<Company> - Stores in Transit" warehouse — which sets
+    warehouse_type='Transit'. On a freshly-provisioned site the
+    Warehouse Type 'Transit' record doesn't exist yet, so we have to
+    create that BEFORE inserting the Company.
 
-    The transactional demo data — RFQ + Supplier Quotations + PO + PR
-    with variance + Sales Orders — is also loaded as part of install
-    via `elite_global.setup.demo.install_demo()`. That helper is
-    idempotent: re-running it deletes any prior demo rows before
-    re-inserting, so it remains safe to call from
-    `bench --site <site> execute elite_global.setup.demo.install_demo`
-    after each code change.
+    The full sequence:
+      Warehouse Type 'Transit' -> Company (triggers default Warehouses)
+      -> UOMs -> Groups -> Items -> Suppliers -> Customers
+      -> Our named Warehouses -> Credit limits -> Demo seed
 
-    Demo data load failures don't break the install — we log and
-    continue so the site stays usable even if a sample doc trips a
-    validation we haven't caught yet.
+    Demo seed failures don't break the install — we log and continue
+    so the site stays usable even if a sample doc trips a validation
+    we haven't caught yet. `install_demo()` is idempotent and can be
+    re-run from the bench console after any code change.
     """
+    _ensure_warehouse_types()
     _ensure_company()
     _ensure_uoms()
     _ensure_supplier_groups()
@@ -67,6 +69,22 @@ def after_install() -> None:
             title="elite_global · demo seed failed during install",
             message=frappe.get_traceback(),
         )
+
+
+# ── Warehouse Types (must exist before Company is created) ────────────
+
+def _ensure_warehouse_types() -> None:
+    """
+    Create the standard 'Transit' Warehouse Type. ERPNext normally
+    creates it via Setup Wizard, but on a freshly-provisioned Frappe
+    Cloud site the wizard hasn't run, so any code path that creates a
+    Warehouse (including Company.on_update's default warehouses) fails
+    with `LinkValidationError: Could not find Warehouse Type: Transit`.
+    """
+    if not frappe.db.exists("Warehouse Type", "Transit"):
+        wt = frappe.new_doc("Warehouse Type")
+        wt.name = "Transit"
+        wt.insert(ignore_permissions=True)
 
 
 # ── Company ─────────────────────────────────────────────────────────────
@@ -246,18 +264,9 @@ WAREHOUSES = [
 
 
 def _ensure_warehouses() -> None:
-    # ERPNext's `Warehouse` doctype has `warehouse_type` defaulting to
-    # "Transit". On a freshly-provisioned site the "Transit" Warehouse
-    # Type record doesn't exist yet (it's normally created when the
-    # Setup Wizard runs), so every Warehouse insert trips a
-    # `LinkValidationError: Could not find Warehouse Type: Transit`
-    # — even when we don't set the field. We create it ourselves
-    # before any warehouse insert.
-    if not frappe.db.exists("Warehouse Type", "Transit"):
-        wt = frappe.new_doc("Warehouse Type")
-        wt.name = "Transit"
-        wt.insert(ignore_permissions=True)
-
+    # Note: the 'Transit' Warehouse Type is created up-front in
+    # `_ensure_warehouse_types()` so Company.on_update's default
+    # warehouse cascade has it available. Nothing to do here.
     for wname, wtype in WAREHOUSES:
         if frappe.db.exists("Warehouse", f"{wname} - {COMPANY_ABBR}"):
             continue
