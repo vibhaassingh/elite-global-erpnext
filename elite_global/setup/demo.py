@@ -38,16 +38,39 @@ yday = today - timedelta(days=1)
 # ── Entry point ─────────────────────────────────────────────────────────
 
 def install_demo() -> None:
-    """Wipe prior demo rows and seed fresh ones. Safe to re-run."""
+    """Wipe prior demo rows and seed fresh ones. Safe to re-run.
+
+    Each step is wrapped so a single failing record (e.g., a field
+    shape that diverges from vanilla ERPNext) doesn't break the
+    remaining demo data — the demo stays partially populated and we
+    can fix the offending step in a follow-up commit.
+    """
     _wipe_prior()
 
-    rfq = _create_rfq()
-    quotes = _create_supplier_quotations(rfq)
-    po = _create_purchase_order_from(quotes[0])
-    _create_purchase_receipt_with_variance(po)
+    rfq = None
+    quotes = []
+    po = None
 
-    _create_sales_order_clean()
-    _create_sales_order_blocked()
+    def _step(label: str, fn):
+        try:
+            return fn()
+        except Exception as e:
+            frappe.log_error(
+                title=f"elite_global demo · {label} failed",
+                message=frappe.get_traceback(),
+            )
+            return None
+
+    rfq = _step("rfq", _create_rfq)
+    if rfq:
+        quotes = _step("supplier_quotations", lambda: _create_supplier_quotations(rfq)) or []
+    if quotes:
+        po = _step("purchase_order", lambda: _create_purchase_order_from(quotes[0]))
+    if po:
+        _step("purchase_receipt", lambda: _create_purchase_receipt_with_variance(po))
+
+    _step("sales_order_clean", _create_sales_order_clean)
+    _step("sales_order_blocked", _create_sales_order_blocked)
 
     frappe.db.commit()
     frappe.msgprint("Elite Global demo seeded.", title="Done", indicator="green")
