@@ -57,6 +57,7 @@ def install_demo() -> None:
 
 def _create_rfq() -> Any:
     rfq = frappe.new_doc("Request for Quotation")
+    rfq.company = COMPANY
     rfq.transaction_date = today
     rfq.status = "Submitted"
     rfq.message_for_supplier = (
@@ -114,6 +115,7 @@ def _create_supplier_quotations(rfq: Any) -> list[Any]:
     out: list[Any] = []
     for spec in bids_spec:
         sq = frappe.new_doc("Supplier Quotation")
+        sq.company = COMPANY
         sq.supplier = spec["supplier"]
         sq.transaction_date = today
         sq.valid_till = today + timedelta(days=2)
@@ -152,6 +154,7 @@ def _create_purchase_order_from(winning_quote: Any) -> Any:
     winner = sorted(quotes, key=lambda q: q.grand_total)[0]
 
     po = frappe.new_doc("Purchase Order")
+    po.company = COMPANY
     po.supplier = winner.supplier
     po.transaction_date = today
     po.schedule_date = today + timedelta(days=2)
@@ -199,6 +202,7 @@ def _create_purchase_order_from(winning_quote: Any) -> Any:
 def _create_purchase_receipt_with_variance(po: Any) -> Any:
     """Receipt that intentionally introduces qty / rate / unit variance."""
     pr = frappe.new_doc("Purchase Receipt")
+    pr.company = COMPANY
     pr.supplier = po.supplier
     pr.posting_date = today
     pr.remarks = f"{DEMO_TAG} variance demo against {po.name}"
@@ -256,6 +260,7 @@ def _create_purchase_receipt_with_variance(po: Any) -> Any:
 def _create_sales_order_clean() -> Any:
     """Sharma Trading — within credit limit, releases for dispatch."""
     so = frappe.new_doc("Sales Order")
+    so.company = COMPANY
     so.customer = "Sharma Trading Co. (EG)"
     so.transaction_date = today
     so.delivery_date = today + timedelta(days=2)
@@ -278,6 +283,7 @@ def _create_sales_order_clean() -> Any:
 def _create_sales_order_blocked() -> Any:
     """Bansal Wholesale — overdue + near limit; ERPNext blocks on submit."""
     so = frappe.new_doc("Sales Order")
+    so.company = COMPANY
     so.customer = "Bansal Wholesale (EG)"
     so.transaction_date = today
     so.delivery_date = today + timedelta(days=2)
