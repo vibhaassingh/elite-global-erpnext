@@ -24,6 +24,33 @@ COMPANY_DEFAULT_CURRENCY = "INR"
 COMPANY_COUNTRY = "India"
 
 
+def after_migrate() -> None:
+    """
+    Idempotent self-heal helpers — run on every `bench migrate` (which
+    Frappe Cloud invokes whenever a site is updated). Lets us push
+    fixes for the Dashboard Chart / Custom Fields / etc. without
+    requiring a fresh app install.
+
+    Wrapped per-step so a single failing helper doesn't break the
+    migration of unrelated changes.
+    """
+    for label, fn in [
+        ("warehouse_types", _ensure_warehouse_types),
+        ("root_groups", _ensure_root_groups),
+        ("price_lists", _ensure_price_lists),
+        ("stock_chart", _ensure_stock_chart),
+        ("setup_complete", _mark_setup_complete),
+    ]:
+        try:
+            fn()
+        except Exception:
+            frappe.log_error(
+                title=f"elite_global · after_migrate {label} failed",
+                message=frappe.get_traceback(),
+            )
+    frappe.db.commit()
+
+
 def after_install() -> None:
     """
     Entry point invoked by Frappe after `install-app elite_global`.

@@ -40,6 +40,12 @@ fixtures = [
 # captured cleanly via JSON fixtures.
 after_install = "elite_global.setup.install.after_install"
 
+# ── After-migrate hook ────────────────────────────────────────────────
+# Runs on `bench migrate` (and therefore on every Frappe Cloud site
+# update). Keeps idempotent helpers like the Stock-by-Warehouse chart
+# self-healing — they detect a stale/broken row and recreate.
+after_migrate = "elite_global.setup.install.after_migrate"
+
 # ── DocType events ────────────────────────────────────────────────────
 # Auto-flag variance on Purchase Receipt save if any line shows a
 # quantity, rate or unit mismatch against the linked Purchase Order.
