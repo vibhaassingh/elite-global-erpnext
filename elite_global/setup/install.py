@@ -38,6 +38,7 @@ def after_migrate() -> None:
         ("warehouse_types", _ensure_warehouse_types),
         ("root_groups", _ensure_root_groups),
         ("price_lists", _ensure_price_lists),
+        ("fiscal_year", _ensure_fiscal_year),
         ("stock_chart", _ensure_stock_chart),
         ("workspace_chart_attached", _ensure_workspace_chart_attached),
         ("workspace_content_normalized", _normalize_workspace_content),
@@ -74,6 +75,7 @@ def after_install() -> None:
     _ensure_warehouse_types()
     _ensure_root_groups()
     _ensure_price_lists()
+    _ensure_fiscal_year()
     _ensure_company()
     _ensure_uoms()
     _ensure_supplier_groups()
@@ -150,6 +152,61 @@ def _ensure_price_lists() -> None:
         doc.selling = selling
         doc.enabled = 1
         doc.insert(ignore_permissions=True)
+
+
+# ── Fiscal Year (must exist before any submitted transaction) ─────────
+
+def _ensure_fiscal_year() -> None:
+    """
+    Create an active Fiscal Year covering today's date. ERPNext refuses
+    to submit any transactional doc (Purchase Receipt, Sales Invoice,
+    etc.) unless the posting date falls inside an active Fiscal Year —
+    the setup wizard normally creates one but on a freshly-provisioned
+    Frappe Cloud site it doesn't run, so submits fail with
+    `FiscalYearError: Date YYYY-MM-DD is not in any active Fiscal Year`.
+
+    We follow India's convention (April–March): for posting date in
+    April-onwards, FY is "<this_year>-<this_year+1>". For Jan-March,
+    FY is "<this_year-1>-<this_year>". Idempotent — only inserts if no
+    Fiscal Year covers today's date.
+    """
+    from frappe.utils import getdate, today
+
+    posting = getdate(today())
+    if posting.month >= 4:
+        start_year = posting.year
+    else:
+        start_year = posting.year - 1
+    end_year = start_year + 1
+    fy_name = f"{start_year}-{end_year}"
+    fy_start = f"{start_year}-04-01"
+    fy_end = f"{end_year}-03-31"
+
+    # If any FY covers today, we're fine.
+    existing = frappe.db.sql(
+        """
+        SELECT name FROM `tabFiscal Year`
+        WHERE year_start_date <= %s AND year_end_date >= %s
+          AND IFNULL(disabled, 0) = 0
+        LIMIT 1
+        """,
+        (today(), today()),
+    )
+    if existing:
+        return
+
+    if frappe.db.exists("Fiscal Year", fy_name):
+        return
+
+    doc = frappe.new_doc("Fiscal Year")
+    doc.update(
+        {
+            "year": fy_name,
+            "year_start_date": fy_start,
+            "year_end_date": fy_end,
+        }
+    )
+    doc.insert(ignore_permissions=True)
 
 
 # ── Warehouse Types (must exist before Company is created) ────────────
@@ -397,57 +454,65 @@ STOCK_CHART_NAME = "Refined Oil — Stock by Warehouse"
 
 def _ensure_stock_chart() -> None:
     """
-    Create the Dashboard Chart imperatively (avoiding fixtures, which
-    failed `filters_json` mandatory validation).
+    Stock-by-Warehouse chart: Group By over Stock Ledger Entry, summing
+    `actual_qty` per warehouse.
 
-    Field reference for the 'Stock Balance' report in ERPNext v15:
-      * `from_date` / `to_date` — required range; default to last 12
-        months so the bar chart has data.
-      * `valuation_field_type` — required in v15 (this is the field
-        Frappe rejects empty filters_json on).
-      * `warehouse: ""` — empty = all warehouses; the bar chart's
-        `x_field: warehouse` is what groups the bars.
-      * `y_axis[].y_field: "bal_qty"` — Stock Balance's closing
-        quantity column.
+    Previously this was a `chart_type: "Report"` chart against the
+    `Stock Balance` report. That rendered an empty "No Data" panel even
+    when stock existed — Stock Balance has thirteen required filters
+    plus `valuation_field_type`, and the chart context doesn't fill
+    them the same way the report viewer does. Switching to Group By
+    sidesteps the report layer entirely and queries the Stock Ledger
+    Entry table directly, summing actual_qty (the per-movement signed
+    quantity) grouped by warehouse — which is exactly the warehouse
+    closing balance.
+
+    Recreation logic: if an existing chart on `chart_type: "Report"`
+    is found, we delete and rebuild with the Group By config. Idempotent
+    once the new config is in place.
     """
-    # If an earlier broken version exists (missing x_field / y_axis),
-    # delete it so we can recreate with the correct render config.
+    # If a previous Report-style chart exists, rebuild with Group By.
     if frappe.db.exists("Dashboard Chart", STOCK_CHART_NAME):
-        existing = frappe.db.get_value(
-            "Dashboard Chart", STOCK_CHART_NAME, "x_field"
+        existing_type = frappe.db.get_value(
+            "Dashboard Chart", STOCK_CHART_NAME, "chart_type"
         )
-        if existing:  # already correct, nothing to do
-            return
+        if existing_type == "Group By":
+            return  # already on the new config
         frappe.delete_doc(
             "Dashboard Chart", STOCK_CHART_NAME, ignore_permissions=True, force=True
         )
 
     import json as _json
-    from frappe.utils import nowdate, add_months
 
-    filters = {
-        "company": COMPANY_NAME,
-        "from_date": add_months(nowdate(), -12),
-        "to_date": nowdate(),
-        "warehouse": "",
-        "valuation_field_type": "Currency",
-    }
+    # Filter out cancelled stock entries — they leave SLE rows with
+    # is_cancelled=1 that would otherwise cancel real movements out.
+    filters = {"is_cancelled": 0}
 
     try:
         chart = frappe.get_doc({
             "doctype": "Dashboard Chart",
             "chart_name": STOCK_CHART_NAME,
-            "chart_type": "Report",
-            "report_name": "Stock Balance",
+            "chart_type": "Group By",
+            "document_type": "Stock Ledger Entry",
+            "group_by_based_on": "warehouse",
+            "group_by_type": "Sum",
+            "aggregate_function_based_on": "actual_qty",
+            "number_of_groups": 5,
             "type": "Bar",
             "module": "Elite Global",
             "is_public": 1,
-            "timespan": "Last Year",
-            "time_interval": "Monthly",
             "timeseries": 0,
+            # The next three MUST be explicitly empty for a Group By
+            # chart. The Dashboard Chart doctype defaults timespan to
+            # "Last Year" — when set, the chart handler tries to
+            # compute a date filter via `chart.based_on(...)` where
+            # `based_on` is None, raising TypeError: 'NoneType' object
+            # is not callable on render. Clearing all three keeps the
+            # render path purely a `frappe.db.get_all(group_by=...)`.
+            "timespan": "",
+            "time_interval": "",
+            "based_on": "",
             "filters_json": _json.dumps(filters),
-            "x_field": "warehouse",
-            "y_axis": [{"y_field": "bal_qty", "color": "#449CF0"}],
         })
         chart.insert(ignore_permissions=True)
     except Exception:
