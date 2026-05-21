@@ -39,6 +39,7 @@ def after_migrate() -> None:
         ("root_groups", _ensure_root_groups),
         ("price_lists", _ensure_price_lists),
         ("stock_chart", _ensure_stock_chart),
+        ("workspace_chart_attached", _ensure_workspace_chart_attached),
         ("hide_unused_workspaces", _hide_unused_workspaces),
         ("relabel_workspace", _relabel_workspace),
         ("setup_complete", _mark_setup_complete),
@@ -83,6 +84,7 @@ def after_install() -> None:
     _ensure_warehouses()
     _ensure_credit_limits()
     _ensure_stock_chart()
+    _ensure_workspace_chart_attached()
     _hide_unused_workspaces()
     _relabel_workspace()
     _mark_setup_complete()
@@ -537,6 +539,80 @@ def _hide_unused_workspaces() -> None:
                 title=f"elite_global · hide workspace {name} failed",
                 message=frappe.get_traceback(),
             )
+
+
+def _ensure_workspace_chart_attached() -> None:
+    """
+    Re-attach the Stock-by-Warehouse chart to the Elite Global workspace
+    after fixture sync.
+
+    Frappe's workspace fixture loader strips chart references that
+    aren't backed by a separate fixture record. Our chart is created
+    imperatively in `_ensure_stock_chart` (not a JSON fixture), so the
+    workspace's `charts` child table row and the `ch1` content block
+    get dropped on every migrate — leaving the chart record itself in
+    place but invisible on the workspace page.
+
+    This helper re-attaches both the link-table row and the content
+    block, idempotently. Runs after `_ensure_stock_chart` so the chart
+    record is guaranteed to exist before we reference it. Number cards
+    survive fixture sync because they're declared as a fixture
+    (`Number Card` in hooks.py), but the chart isn't — adding the chart
+    as a fixture would require checking in its JSON, which we deliberately
+    avoid since the chart is constructed imperatively to match the
+    company name & date range.
+    """
+    if not frappe.db.exists("Workspace", WORKSPACE_NAME):
+        return
+    if not frappe.db.exists("Dashboard Chart", STOCK_CHART_NAME):
+        return
+
+    import json as _json
+
+    ws = frappe.get_doc("Workspace", WORKSPACE_NAME)
+
+    # Re-attach the chart row in the `charts` child table
+    has_chart_link = any(
+        c.chart_name == STOCK_CHART_NAME for c in (ws.charts or [])
+    )
+    if not has_chart_link:
+        ws.append(
+            "charts",
+            {"chart_name": STOCK_CHART_NAME, "label": "Stock by warehouse"},
+        )
+
+    # Re-attach the `ch1` content block. We insert it (plus a leading
+    # spacer) just before the `ql` Walkthrough header so the rendered
+    # layout matches the original JSON: number cards → spacer → chart
+    # → spacer → walkthrough.
+    content = _json.loads(ws.content or "[]")
+    has_ch1 = any(
+        b.get("type") == "chart"
+        and b.get("data", {}).get("chart_name") == STOCK_CHART_NAME
+        for b in content
+    )
+    if not has_ch1:
+        ql_idx = next(
+            (i for i, b in enumerate(content) if b.get("id") == "ql"),
+            len(content),
+        )
+        # Insert in reverse order so positions stay correct
+        content.insert(
+            ql_idx,
+            {
+                "id": "ch1",
+                "type": "chart",
+                "data": {"chart_name": STOCK_CHART_NAME, "col": 12},
+            },
+        )
+        content.insert(
+            ql_idx,
+            {"id": "sp2", "type": "spacer", "data": {"col": 12}},
+        )
+        ws.content = _json.dumps(content)
+
+    if not has_chart_link or not has_ch1:
+        ws.save(ignore_permissions=True)
 
 
 def _relabel_workspace() -> None:
