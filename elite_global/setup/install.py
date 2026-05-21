@@ -53,6 +53,8 @@ def after_install() -> None:
     _ensure_customers()
     _ensure_warehouses()
     _ensure_credit_limits()
+    _ensure_stock_chart()
+    _mark_setup_complete()
     frappe.db.commit()
 
     # Seed transactional demo. Wrapped so install still succeeds if a
@@ -351,3 +353,58 @@ def _ensure_credit_limits() -> None:
             {"company": COMPANY_NAME, "credit_limit": limit},
         )
         cust.save(ignore_permissions=True)
+
+
+# ── Stock-by-Warehouse Dashboard Chart ─────────────────────────────────
+
+STOCK_CHART_NAME = "Refined Oil — Stock by Warehouse"
+
+
+def _ensure_stock_chart() -> None:
+    """
+    Create the Dashboard Chart imperatively (avoiding fixtures, which
+    failed `filters_json` mandatory validation). Bound to ERPNext's
+    'Stock Balance' report scoped to our Company.
+    """
+    if frappe.db.exists("Dashboard Chart", STOCK_CHART_NAME):
+        return
+    import json as _json
+    filters = {"company": COMPANY_NAME, "from_date": str(frappe.utils.today()),
+               "to_date": str(frappe.utils.today())}
+    doc = frappe.new_doc("Dashboard Chart")
+    doc.update({
+        "chart_name": STOCK_CHART_NAME,
+        "chart_type": "Report",
+        "report_name": "Stock Balance",
+        "is_public": 1,
+        "type": "Bar",
+        "timespan": "Last Month",
+        "time_interval": "Daily",
+        "filters_json": _json.dumps(filters),
+        "module": "Elite Global",
+    })
+    try:
+        doc.insert(ignore_permissions=True)
+    except Exception:
+        frappe.log_error(
+            title="elite_global · stock chart insert failed",
+            message=frappe.get_traceback(),
+        )
+
+
+# ── Mark Setup Wizard complete ────────────────────────────────────────
+
+def _mark_setup_complete() -> None:
+    """
+    The desk shows a "Setup Site" warning bar until System Settings.
+    setup_complete = 1. Our after_install has already created the
+    Company / Currency / Country / Domain — there's nothing left for
+    the user to fill in. Set the flag so the warning disappears.
+    """
+    try:
+        frappe.db.set_single_value("System Settings", "setup_complete", 1)
+    except Exception:
+        frappe.log_error(
+            title="elite_global · mark setup_complete failed",
+            message=frappe.get_traceback(),
+        )

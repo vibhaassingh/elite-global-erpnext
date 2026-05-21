@@ -1,12 +1,10 @@
 """
-Public read-only API endpoints for diagnostic verification.
+Diagnostic API endpoints for the Elite Global demo.
 
-These are exposed without authentication on purpose — they return
-counts and presence flags only (no sensitive data) so we can
-confirm that after_install and the demo seeder ran correctly on a
-freshly-installed site without needing to log in as Administrator.
-
-Remove or restrict in production.
+These now require a System Manager session — the early-build version
+allowed Guest access for unauthenticated verification, but that is
+not safe to leave on a shareable demo URL. Hit these from the
+ERPNext Desk after logging in as Administrator.
 """
 
 from __future__ import annotations
@@ -14,7 +12,7 @@ from __future__ import annotations
 import frappe
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def run_demo_seed() -> dict:
     """
     Run the transactional demo seeder explicitly. Hit at:
@@ -37,7 +35,7 @@ def run_demo_seed() -> dict:
         }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def demo_status() -> dict:
     """Return counts of the demo records the after_install hook should
     have created. Hit at:
