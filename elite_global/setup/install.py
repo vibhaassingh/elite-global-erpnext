@@ -40,6 +40,7 @@ def after_migrate() -> None:
         ("price_lists", _ensure_price_lists),
         ("stock_chart", _ensure_stock_chart),
         ("workspace_chart_attached", _ensure_workspace_chart_attached),
+        ("workspace_content_normalized", _normalize_workspace_content),
         ("hide_unused_workspaces", _hide_unused_workspaces),
         ("relabel_workspace", _relabel_workspace),
         ("setup_complete", _mark_setup_complete),
@@ -85,6 +86,7 @@ def after_install() -> None:
     _ensure_credit_limits()
     _ensure_stock_chart()
     _ensure_workspace_chart_attached()
+    _normalize_workspace_content()
     _hide_unused_workspaces()
     _relabel_workspace()
     _mark_setup_complete()
@@ -619,6 +621,79 @@ def _ensure_workspace_chart_attached() -> None:
         ws.content = _json.dumps(content)
 
     if not has_chart_link or not has_ch1:
+        ws.save(ignore_permissions=True)
+
+
+def _normalize_workspace_content() -> None:
+    """
+    Rewrite the Elite Global workspace's content blocks so the
+    `number_card_name` and `chart_name` data fields match the
+    link-table `label` fields (short forms — e.g. "Open Bids" not
+    "EG · Open Bids", "Stock by warehouse" not "Refined Oil — Stock
+    by Warehouse").
+
+    Why this exists: Frappe v15's workspace block plugin `make()`
+    looks up the linked widget by `obj.label == data.number_card_name`
+    (or `chart_name`). The link table's `label` field is the lookup
+    key, NOT the actual record name. A mismatch silently drops the
+    block — the workspace page renders with a gap where the number
+    card or chart should be.
+
+    Our link table carries the short labels (so the workspace editor
+    UI shows them readably), so the content must reference those same
+    short labels. This helper rewrites the content if any block still
+    uses the old long form. Idempotent — only saves when a rewrite is
+    actually needed.
+
+    Belt-and-suspenders alongside the JSON fixture file: when
+    fixture-sync upserts the workspace, the file's content already
+    uses short labels. But fixture-sync compares the file's
+    `modified` timestamp to the DB and skips when the DB is newer —
+    so an older content can stick around. This helper guarantees the
+    final state regardless.
+    """
+    if not frappe.db.exists("Workspace", WORKSPACE_NAME):
+        return
+
+    import json as _json
+
+    # Map old (long) → new (short label) for both block kinds. Add any
+    # additional aliases here if the labels are ever renamed.
+    NC_RENAME = {
+        "EG · Open Bids": "Open Bids",
+        "EG · Open Sales Orders": "Open Sales Orders",
+        "EG · POs Awaiting Receipt": "POs Awaiting Receipt",
+        "EG · Variance Flagged Receipts": "Variance Flagged Receipts",
+    }
+    CHART_RENAME = {
+        STOCK_CHART_NAME: "Stock by warehouse",
+    }
+
+    ws = frappe.get_doc("Workspace", WORKSPACE_NAME)
+    try:
+        content = _json.loads(ws.content or "[]")
+    except (ValueError, TypeError):
+        return
+
+    changed = False
+    for block in content:
+        block_type = block.get("type")
+        data = block.get("data") or {}
+        if block_type == "number_card":
+            cur = data.get("number_card_name")
+            if cur in NC_RENAME:
+                data["number_card_name"] = NC_RENAME[cur]
+                block["data"] = data
+                changed = True
+        elif block_type == "chart":
+            cur = data.get("chart_name")
+            if cur in CHART_RENAME:
+                data["chart_name"] = CHART_RENAME[cur]
+                block["data"] = data
+                changed = True
+
+    if changed:
+        ws.content = _json.dumps(content)
         ws.save(ignore_permissions=True)
 
 
