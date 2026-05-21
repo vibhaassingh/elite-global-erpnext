@@ -18,10 +18,15 @@ def run_demo_seed() -> dict:
     Run the transactional demo seeder explicitly. Hit at:
         /api/method/elite_global.api.run_demo_seed
 
+    Requires System Manager — the decorator drops Guest, the body
+    enforces the role server-side so any authenticated non-admin
+    user gets 403.
+
     Returns either {"ok": true, "ran": "install_demo"} on success, or
     {"ok": false, "error": "<exception>", "traceback": "..."} on
     failure. Useful when after_install swallowed the demo seed call.
     """
+    frappe.only_for("System Manager")
     try:
         from elite_global.setup.demo import install_demo
         install_demo()
@@ -40,7 +45,12 @@ def demo_status() -> dict:
     """Return counts of the demo records the after_install hook should
     have created. Hit at:
         /api/method/elite_global.api.demo_status
+
+    Requires System Manager (belt + suspenders: the decorator drops
+    Guest, the body enforces the role).
     """
+    frappe.only_for("System Manager")
+
     def count(doctype: str, filters: dict | list | None = None) -> int:
         try:
             return frappe.db.count(doctype, filters or {})
