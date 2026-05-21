@@ -39,6 +39,8 @@ def after_migrate() -> None:
         ("root_groups", _ensure_root_groups),
         ("price_lists", _ensure_price_lists),
         ("stock_chart", _ensure_stock_chart),
+        ("hide_unused_workspaces", _hide_unused_workspaces),
+        ("relabel_workspace", _relabel_workspace),
         ("setup_complete", _mark_setup_complete),
     ]:
         try:
@@ -81,6 +83,8 @@ def after_install() -> None:
     _ensure_warehouses()
     _ensure_credit_limits()
     _ensure_stock_chart()
+    _hide_unused_workspaces()
+    _relabel_workspace()
     _mark_setup_complete()
     frappe.db.commit()
 
@@ -463,5 +467,100 @@ def _mark_setup_complete() -> None:
     except Exception:
         frappe.log_error(
             title="elite_global · mark setup_complete failed",
+            message=frappe.get_traceback(),
+        )
+
+
+# ── Workspace hygiene (sidebar cleanup + rename) ──────────────────────
+
+# Sidebar entries we hide from Mr. Arora's view. ERPNext ships a
+# workspace per industry vertical & per internal operations module —
+# none of them apply to a refined-oil distribution & C&F business, and
+# they make the demo harder to read. We don't delete them (admins can
+# unhide later if a workspace is ever wanted back), just flip the
+# `is_hidden` flag so they drop out of the rendered sidebar.
+HIDDEN_WORKSPACES = [
+    # Industry verticals not relevant to refined-oil distribution
+    "Manufacturing",
+    "Healthcare",
+    "Education",
+    "Non Profit",
+    "Agriculture",
+    "Hospitality",
+    "Hotels",
+    "Restaurant",
+    "Pharmaceutical",
+    # Internal ops modules we're not running in the demo
+    "Quality",
+    "Loan Management",
+    "Loans",
+    "Support",
+    "Assets",
+    "Projects",
+    "HR",
+    "Payroll",
+    # Frappe utility / onboarding modules
+    "Build",
+    "Welcome Workspace",
+    "Marketplace",
+    "Website",
+    "Tools",
+    "ERPNext Integrations",
+]
+
+WORKSPACE_NAME = "Elite Global"
+WORKSPACE_LABEL = "Elite Global Enterprises"
+
+
+def _hide_unused_workspaces() -> None:
+    """
+    Hide ERPNext workspaces irrelevant to a refined-oil distribution
+    business. Keeps the Desk sidebar focused on Selling / Buying /
+    Stock / Accounting / CRM and the custom Elite Global Enterprises
+    workspace.
+
+    Idempotent — safe to re-run on every `after_migrate`. We don't
+    raise on missing workspaces (some only exist when their parent
+    module is installed) and we don't raise on protected workspaces
+    either — we just log and continue so one stubborn row doesn't
+    break the rest of the chain.
+    """
+    for name in HIDDEN_WORKSPACES:
+        if not frappe.db.exists("Workspace", name):
+            continue
+        try:
+            frappe.db.set_value(
+                "Workspace", name, "is_hidden", 1, update_modified=False
+            )
+        except Exception:
+            frappe.log_error(
+                title=f"elite_global · hide workspace {name} failed",
+                message=frappe.get_traceback(),
+            )
+
+
+def _relabel_workspace() -> None:
+    """
+    Update the sidebar label of the custom workspace to the full
+    client name ("Elite Global Enterprises"). The workspace primary
+    key stays "Elite Global" so existing references in number cards,
+    shortcuts and the dashboard chart don't break — we only touch the
+    user-visible `label` and `title` fields.
+
+    Idempotent — runs on every `after_migrate`. Reads cheaply via
+    `frappe.db.exists` before writing.
+    """
+    if not frappe.db.exists("Workspace", WORKSPACE_NAME):
+        return
+    try:
+        frappe.db.set_value(
+            "Workspace",
+            WORKSPACE_NAME,
+            {"label": WORKSPACE_LABEL, "title": WORKSPACE_LABEL},
+            update_modified=False,
+        )
+    except Exception:
+        frappe.log_error(
+            title="elite_global · relabel workspace failed",
             message=frappe.get_traceback(),
         )

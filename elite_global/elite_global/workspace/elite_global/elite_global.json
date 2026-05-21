@@ -15,7 +15,7 @@
  "icon": "organization",
  "indicator_color": "orange",
  "is_hidden": 0,
- "label": "Elite Global",
+ "label": "Elite Global Enterprises",
  "links": [],
  "modified": "2026-05-20 12:00:00.000000",
  "modified_by": "Administrator",
@@ -70,5 +70,5 @@
    "type": "DocType"
   }
  ],
- "title": "Elite Global"
+ "title": "Elite Global Enterprises"
 }
