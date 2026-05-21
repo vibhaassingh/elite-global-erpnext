@@ -375,8 +375,18 @@ def _ensure_stock_chart() -> None:
       * `y_axis[].y_field: "bal_qty"` — Stock Balance's closing
         quantity column.
     """
+    # If an earlier broken version exists (missing x_field / y_axis),
+    # delete it so we can recreate with the correct render config.
     if frappe.db.exists("Dashboard Chart", STOCK_CHART_NAME):
-        return
+        existing = frappe.db.get_value(
+            "Dashboard Chart", STOCK_CHART_NAME, "x_field"
+        )
+        if existing:  # already correct, nothing to do
+            return
+        frappe.delete_doc(
+            "Dashboard Chart", STOCK_CHART_NAME, ignore_permissions=True, force=True
+        )
+
     import json as _json
     from frappe.utils import nowdate, add_months
 
