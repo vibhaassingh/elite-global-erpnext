@@ -586,9 +586,13 @@ def _ensure_workspace_chart_attached() -> None:
     # layout matches the original JSON: number cards → spacer → chart
     # → spacer → walkthrough.
     content = _json.loads(ws.content or "[]")
+    # Match on either the short label ("Stock by warehouse") or the
+    # full record name (in case an older deploy left the previous block
+    # shape on disk). Either form means we don't need to re-insert.
     has_ch1 = any(
         b.get("type") == "chart"
-        and b.get("data", {}).get("chart_name") == STOCK_CHART_NAME
+        and b.get("data", {}).get("chart_name")
+        in (STOCK_CHART_NAME, "Stock by warehouse")
         for b in content
     )
     if not has_ch1:
@@ -596,13 +600,16 @@ def _ensure_workspace_chart_attached() -> None:
             (i for i, b in enumerate(content) if b.get("id") == "ql"),
             len(content),
         )
-        # Insert in reverse order so positions stay correct
+        # The content's `chart_name` must match the link table's `label`
+        # field, NOT the Dashboard Chart's actual record name. Frappe's
+        # workspace JS `make()` looks up the linked widget by
+        # `obj.label`, so a mismatch silently drops the block.
         content.insert(
             ql_idx,
             {
                 "id": "ch1",
                 "type": "chart",
-                "data": {"chart_name": STOCK_CHART_NAME, "col": 12},
+                "data": {"chart_name": "Stock by warehouse", "col": 12},
             },
         )
         content.insert(
