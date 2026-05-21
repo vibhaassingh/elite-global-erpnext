@@ -431,7 +431,10 @@ def _ensure_credit_limits() -> None:
     targets = [
         ("Sharma Trading Co. (EG)", 1_000_000),
         ("Verma Kirana Stores (EG)", 250_000),
-        ("Bansal Wholesale (EG)", 500_000),
+        # Bansal sits at ₹2L — the deliberately tight limit that the
+        # walkthrough's ₹2.97L draft Sales Order is built to trip, so
+        # "04 · Credit Check" demonstrates a live block on submit.
+        ("Bansal Wholesale (EG)", 200_000),
         ("Reliance Smart - Karnal (EG)", 2_000_000),
         ("Hotel Saffron Kitchens (EG)", 750_000),
     ]
