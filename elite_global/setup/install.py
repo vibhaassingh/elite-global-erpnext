@@ -363,28 +363,48 @@ STOCK_CHART_NAME = "Refined Oil — Stock by Warehouse"
 def _ensure_stock_chart() -> None:
     """
     Create the Dashboard Chart imperatively (avoiding fixtures, which
-    failed `filters_json` mandatory validation). Bound to ERPNext's
-    'Stock Balance' report scoped to our Company.
+    failed `filters_json` mandatory validation).
+
+    Field reference for the 'Stock Balance' report in ERPNext v15:
+      * `from_date` / `to_date` — required range; default to last 12
+        months so the bar chart has data.
+      * `valuation_field_type` — required in v15 (this is the field
+        Frappe rejects empty filters_json on).
+      * `warehouse: ""` — empty = all warehouses; the bar chart's
+        `x_field: warehouse` is what groups the bars.
+      * `y_axis[].y_field: "bal_qty"` — Stock Balance's closing
+        quantity column.
     """
     if frappe.db.exists("Dashboard Chart", STOCK_CHART_NAME):
         return
     import json as _json
-    filters = {"company": COMPANY_NAME, "from_date": str(frappe.utils.today()),
-               "to_date": str(frappe.utils.today())}
-    doc = frappe.new_doc("Dashboard Chart")
-    doc.update({
-        "chart_name": STOCK_CHART_NAME,
-        "chart_type": "Report",
-        "report_name": "Stock Balance",
-        "is_public": 1,
-        "type": "Bar",
-        "timespan": "Last Month",
-        "time_interval": "Daily",
-        "filters_json": _json.dumps(filters),
-        "module": "Elite Global",
-    })
+    from frappe.utils import nowdate, add_months
+
+    filters = {
+        "company": COMPANY_NAME,
+        "from_date": add_months(nowdate(), -12),
+        "to_date": nowdate(),
+        "warehouse": "",
+        "valuation_field_type": "Currency",
+    }
+
     try:
-        doc.insert(ignore_permissions=True)
+        chart = frappe.get_doc({
+            "doctype": "Dashboard Chart",
+            "chart_name": STOCK_CHART_NAME,
+            "chart_type": "Report",
+            "report_name": "Stock Balance",
+            "type": "Bar",
+            "module": "Elite Global",
+            "is_public": 1,
+            "timespan": "Last Year",
+            "time_interval": "Monthly",
+            "timeseries": 0,
+            "filters_json": _json.dumps(filters),
+            "x_field": "warehouse",
+            "y_axis": [{"y_field": "bal_qty", "color": "#449CF0"}],
+        })
+        chart.insert(ignore_permissions=True)
     except Exception:
         frappe.log_error(
             title="elite_global · stock chart insert failed",
