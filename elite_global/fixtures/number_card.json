@@ -40,7 +40,7 @@
   "function": "Count",
   "is_public": 1,
   "color": "#e57373",
-  "filters_json": "[[\"Purchase Receipt\",\"custom_variance_flagged\",\"=\",1,false]]",
+  "filters_json": "[[\"Purchase Receipt\",\"custom_variance_flagged\",\"=\",1,false],[\"Purchase Receipt\",\"docstatus\",\"<\",2,false]]",
   "module": "Elite Global"
  }
 ]
