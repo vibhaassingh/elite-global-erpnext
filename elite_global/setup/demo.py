@@ -67,6 +67,16 @@ def install_demo() -> None:
     if quotes:
         po = _step("purchase_order", lambda: _create_purchase_order_from(quotes[0]))
     if po:
+        # Two receipts against the same PO:
+        #   A) submitted clean — sunflower, full qty + PO rate. Creates
+        #      Stock Ledger Entry rows so the workspace's
+        #      "Stock by warehouse" chart has data the moment the demo
+        #      loads — no walkthrough action required.
+        #   B) draft, with variance — soybean (qty variance) + mustard
+        #      (rate variance). Stays as Draft so "03 · Goods Arrival"
+        #      has something the user can review & submit during the
+        #      walkthrough.
+        _step("purchase_receipt_clean", lambda: _create_purchase_receipt_clean(po))
         _step("purchase_receipt", lambda: _create_purchase_receipt_with_variance(po))
 
     _step("sales_order_clean", _create_sales_order_clean)
@@ -232,15 +242,18 @@ def _create_purchase_order_from(winning_quote: Any) -> Any:
     return po
 
 
-def _create_purchase_receipt_with_variance(po: Any) -> Any:
-    """Receipt that intentionally introduces qty / rate / unit variance."""
+def _create_purchase_receipt_clean(po: Any) -> Any:
+    """Submitted PR for the sunflower line — receives 1200 tins at the
+    PO rate, no variance. Submitting creates Stock Ledger Entry rows
+    that populate the workspace's "Stock by warehouse" chart on demo
+    load, so Mr. Arora sees actual data before he even starts the
+    walkthrough."""
     pr = frappe.new_doc("Purchase Receipt")
     pr.company = COMPANY
     pr.supplier = po.supplier
     pr.posting_date = today
-    pr.remarks = f"{DEMO_TAG} variance demo against {po.name}"
+    pr.remarks = f"{DEMO_TAG} clean receipt — sunflower delivery"
 
-    # 01: clean — sunflower oil, exactly as PO.
     sunflower = po.items[0]
     pr.append("items", {
         "item_code": sunflower.item_code,
@@ -254,7 +267,23 @@ def _create_purchase_receipt_with_variance(po: Any) -> Any:
         "purchase_order_item": sunflower.name,
     })
 
-    # 02: short delivery — soybean 300 -> 288 tins (-4%).
+    pr.insert(ignore_permissions=True)
+    pr.submit()  # Submit → creates SLE rows for the chart
+    return pr
+
+
+def _create_purchase_receipt_with_variance(po: Any) -> Any:
+    """Draft PR for the soybean + mustard lines — short-delivery on
+    soybean and a rate variance on mustard. Stays as Draft so the
+    "03 · Goods Arrival" walkthrough step has a flagged receipt for
+    the user to review and submit."""
+    pr = frappe.new_doc("Purchase Receipt")
+    pr.company = COMPANY
+    pr.supplier = po.supplier
+    pr.posting_date = today
+    pr.remarks = f"{DEMO_TAG} variance demo against {po.name}"
+
+    # 01: short delivery — soybean 300 -> 288 tins (-4%).
     soybean = po.items[1]
     pr.append("items", {
         "item_code": soybean.item_code,
@@ -268,7 +297,7 @@ def _create_purchase_receipt_with_variance(po: Any) -> Any:
         "purchase_order_item": soybean.name,
     })
 
-    # 03: rate variance — mustard 1640 -> 1672 (+1.95%).
+    # 02: rate variance — mustard 1640 -> 1672 (+1.95%).
     mustard = po.items[2]
     pr.append("items", {
         "item_code": mustard.item_code,
