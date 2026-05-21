@@ -580,7 +580,7 @@ HIDDEN_WORKSPACES = [
     "ERPNext Integrations",
 ]
 
-WORKSPACE_NAME = "Elite Global"
+WORKSPACE_NAME = "Elite Global Enterprises"
 WORKSPACE_LABEL = "Elite Global Enterprises"
 
 
